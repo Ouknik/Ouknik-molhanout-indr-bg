@@ -118,6 +118,11 @@ class OrderController extends Controller
     public function show(int $id, Request $request): JsonResponse
     {
         $user = $request->user();
+        $shop = $user->shop;
+
+        if (!$shop) {
+            return response()->json(['success' => false, 'message' => 'No shop found'], 404);
+        }
 
         $order = Order::with([
             'items.product',
@@ -125,11 +130,10 @@ class OrderController extends Controller
             'offers.items.product',
             'shop',
             'delivery',
-        ])->findOrFail($id);
+        ])->where('shop_id', $shop->id)->find($id);
 
-        // Authorization: shop owner sees their own, distributor sees published
-        if ($user->isShopOwner() && $order->shop_id !== $user->shop?->id) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        if (!$order) {
+            return response()->json(['success' => false, 'message' => 'Order not found'], 404);
         }
 
         return response()->json([
